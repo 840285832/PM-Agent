@@ -1,0 +1,23 @@
+# ===== 虚拟环境 =====
+.venv/
+venv/
+
+# ===== Python 缓存 =====
+__pycache__/
+*.pyc
+
+# ===== 密钥与本地配置(绝不提交) =====
+.env
+.env.local
+!.env.example
+.claude/settings.local.json
+
+# ===== 本地输出 / 调试残留 =====
+output/
+dbg_*
+_tmp*
+*.log
+
+# ===== 系统文件 =====
+Thumbs.db
+.DS_Store

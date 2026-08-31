@@ -1,0 +1,11 @@
+# 团队资源假设（人工维护，排期步骤使用）
+# 修改后重跑排期步骤：python main.py step schedule --force
+team:
+  developers: 2              # 可投入开发人数
+  qa: 1                      # 可投入测试人数
+  designers: 1               # 可投入设计人数
+  start_date: "2026-09-07"   # 排期起始日期（YYYY-MM-DD）
+  sprint_days: 14            # 迭代周期（自然日）
+  working_days_per_week: 5   # 每周工作日
+  parallel_tasks_per_dev: 1  # 同一开发可并行的任务数
+  fixed_holidays: []         # 固定节假日（YYYY-MM-DD 列表）

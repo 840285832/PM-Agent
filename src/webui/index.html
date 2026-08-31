@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PMAgents 操作面板</title>
+<style>
+/* ============ 设计令牌 ============ */
+:root {
+  --bg: #f3f5fa; --panel: #ffffff; --border: #e3e8f0;
+  --text: #1e293b; --muted: #64748b;
+  --primary: #4f46e5; --primary-strong: #4338ca; --primary-soft: #eef2ff;
+  --ok: #16a34a; --ok-soft: #e8f7ee;
+  --warn: #d97706; --warn-soft: #fdf3e3;
+  --err: #dc2626; --err-soft: #fdeaea;
+  --hover: #f1f5f9;
+  --bg-deco: rgba(79,70,229,.045);
+  --scrollbar: #c8d0dc;
+  --shadow: 0 1px 3px rgba(15,23,42,.06), 0 5px 16px rgba(15,23,42,.05);
+  --radius: 10px;
+  --code-bg: #1e293b; --code-text: #e2e8f0;
+  --mono: Consolas, "Cascadia Code", "JetBrains Mono", monospace;
+}
+[data-theme="dark"] {
+  --bg: #0b1220; --panel: #141d31; --border: #27334d;
+  --text: #e2e8f0; --muted: #8ea0b8;
+  --primary: #8b93f8; --primary-strong: #a5abfa; --primary-soft: #1d2a4a;
+  --ok: #4ade80; --ok-soft: #143221;
+  --warn: #fbbf24; --warn-soft: #3a2c10;
+  --err: #f87171; --err-soft: #3d1c1c;
+  --hover: #1b2740;
+  --bg-deco: transparent;
+  --scrollbar: #35435f;
+  --shadow: 0 1px 3px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+  --code-bg: #0d1526; --code-text: #d7e0ef;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: var(--bg);
+  background-image: radial-gradient(1100px 480px at 15% -10%, var(--bg-deco), transparent);
+  color: var(--text); height: 100vh; display: flex; flex-direction: column;
+  transition: background-color .25s, color .25s;
+}
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ============ 头部 ============ */
+header {
+  background: var(--panel); border-bottom: 1px solid var(--border);
+  padding: 10px 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  box-shadow: var(--shadow); z-index: 10;
+}
+header h1 { font-size: 16px; margin-right: 6px; display: flex; align-items: center; gap: 7px; }
+header h1 .h1-sub { color: var(--muted); font-weight: 600; font-size: 14px; }
+header h1 .brand {
+  background: linear-gradient(120deg, #6366f1, #8b5cf6 55%, #d946ef);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  font-weight: 800; letter-spacing: .3px;
+}
+select, button, textarea, input { font: inherit; }
+select {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel); color: var(--text); max-width: 240px;
+  transition: border-color .15s, box-shadow .15s;
+}
+select:focus, textarea:focus, input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+button {
+  padding: 7px 14px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel); color: var(--text); cursor: pointer; font-size: 13px;
+  transition: border-color .15s, color .15s, box-shadow .15s, background .15s;
+}
+button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); box-shadow: 0 2px 8px rgba(79,70,229,.14); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff;
+  border: none; font-weight: 600; box-shadow: 0 2px 8px rgba(79,70,229,.28);
+}
+button.primary:hover:not(:disabled) { color: #fff; filter: brightness(1.08); box-shadow: 0 4px 14px rgba(79,70,229,.36); }
+button.danger { background: transparent; color: var(--err); border-color: var(--err); }
+button.danger:hover:not(:disabled) { background: var(--err-soft); color: var(--err); border-color: var(--err); box-shadow: none; }
+#btnTheme { border: none; background: transparent; font-size: 15px; padding: 6px 9px; }
+#btnTheme:hover:not(:disabled) { background: var(--hover); box-shadow: none; }
+#runBar { flex-basis: 100%; font-size: 12.5px; color: var(--muted); min-height: 18px; display: flex; align-items: center; gap: 7px; }
+#runBar.running { color: var(--primary); }
+#runBar.running::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--primary-soft); border-top-color: var(--primary); animation: spin .8s linear infinite; flex: none; }
+#runBar.error { color: var(--err); font-weight: 600; }
+
+/* ============ 布局 ============ */
+main { flex: 1; display: flex; overflow: hidden; }
+aside {
+  width: 268px; min-width: 268px; background: var(--panel);
+  border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 10px;
+}
+.step-progress { display: flex; align-items: center; gap: 8px; padding: 0 6px 12px; font-size: 11.5px; color: var(--muted); }
+.step-progress .bar { flex: 1; height: 5px; border-radius: 3px; background: var(--hover); overflow: hidden; }
+.step-progress .bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #6366f1, #4f46e5); transition: width .45s ease; }
+.step-progress b { font-weight: 700; color: var(--primary); }
+.step {
+  padding: 9px 10px; border-left: 3px solid transparent; cursor: pointer;
+  display: flex; gap: 9px; align-items: flex-start; border-radius: 8px;
+  margin-bottom: 2px; transition: background .15s, border-color .15s;
+}
+.step:hover { background: var(--hover); }
+.step.active { background: var(--primary-soft); border-left-color: var(--primary); }
+.step .dot {
+  width: 22px; height: 22px; border-radius: 50%; flex: none; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  background: var(--hover); border: 1.5px solid var(--border);
+  transition: background .2s, border-color .2s, color .2s;
+}
+.step.done .dot { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.step.running .dot { background: transparent; border: 2px solid var(--primary-soft); border-top-color: var(--primary); animation: spin .8s linear infinite; }
+.step.error .dot { background: var(--err-soft); border-color: var(--err); color: var(--err); }
+.step.warn .dot { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.step.active .dot { box-shadow: 0 0 0 3px var(--primary-soft); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { opacity: .45; } }
+.step .info { flex: 1; min-width: 0; }
+.step .name { font-size: 13px; font-weight: 600; }
+.step.done .name { color: var(--muted); }
+.step .label { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+.step .badge { font-size: 10.5px; padding: 1px 7px; border-radius: 10px; background: var(--hover); color: var(--muted); margin-top: 4px; display: inline-block; }
+.step .badge.gate-ok { background: var(--ok-soft); color: var(--ok); }
+.step .badge.gate-no { background: var(--err-soft); color: var(--err); }
+.step .rerun {
+  border: none; background: none; color: var(--muted); padding: 2px 5px;
+  font-size: 15px; flex: none; border-radius: 6px;
+  opacity: 0; transition: opacity .15s, color .15s, background .15s;
+}
+.step:hover .rerun, .step.active .rerun { opacity: 1; }
+.step .rerun:hover { color: var(--primary); background: var(--primary-soft); }
+.step .warnlist { font-size: 11px; color: var(--warn); margin-top: 3px; }
+section { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#tabs { display: flex; gap: 2px; padding: 8px 16px 0; background: var(--panel); border-bottom: 1px solid var(--border); }
+#tabs button {
+  border: none; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0;
+  padding: 9px 16px; color: var(--muted); background: none; font-size: 13px;
+}
+#tabs button:hover:not(.active) { color: var(--text); background: var(--hover); box-shadow: none; }
+#tabs button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+#viewer { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.panel-row { display: flex; gap: 14px; height: 100%; }
+.filelist { width: 235px; min-width: 235px; border-right: 1px solid var(--border); padding-right: 12px; overflow-y: auto; }
+.filelist .f {
+  display: flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 5px 9px;
+  border-radius: 7px; cursor: pointer; color: var(--text); word-break: break-all;
+  transition: background .12s, color .12s;
+}
+.filelist .f:hover { background: var(--hover); }
+.filelist .f.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.filelist .dir { font-size: 11px; color: var(--muted); margin: 12px 0 3px; font-weight: 700; letter-spacing: .4px; }
+.content { flex: 1; overflow-y: auto; min-width: 0; }
+
+/* ============ Markdown 产物渲染 ============ */
+.md { font-size: 14px; line-height: 1.75; }
+.md h1 { font-size: 21px; margin: 12px 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.md h2 {
+  font-size: 16.5px; margin: 18px 0 8px; padding: 4px 0 6px 10px;
+  border-left: 3px solid var(--primary); border-radius: 0 6px 6px 0;
+  background: linear-gradient(90deg, var(--primary-soft), transparent);
+}
+.md h3 { font-size: 15px; margin: 14px 0 6px; }
+.md h4 { font-size: 14px; margin: 10px 0 4px; }
+.md p { margin: 8px 0; }
+.md ul, .md ol { margin: 8px 0 8px 24px; }
+.md li { margin: 3px 0; }
+.md li::marker { color: var(--primary); }
+.md table { border-collapse: separate; border-spacing: 0; margin: 12px 0; font-size: 13px; width: 100%; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.md th, .md td { border-bottom: 1px solid var(--border); padding: 7px 11px; text-align: left; }
+.md th { background: var(--primary-soft); font-weight: 700; font-size: 12.5px; }
+.md tbody tr:hover { background: var(--hover); }
+.md tbody tr:last-child td { border-bottom: none; }
+.md code { background: var(--hover); border: 1px solid var(--border); padding: 1px 6px; border-radius: 5px; font-family: var(--mono); font-size: 12.5px; }
+.md pre { background: var(--code-bg); color: var(--code-text); padding: 14px; border-radius: 10px; overflow-x: auto; margin: 12px 0; font-size: 12.5px; line-height: 1.6; }
+.md pre .langtag { display: block; color: #94a3b8; font-size: 11px; margin-bottom: 6px; }
+.md blockquote { border-left: 3px solid var(--primary); background: var(--primary-soft); border-radius: 0 8px 8px 0; padding: 8px 14px; color: var(--muted); margin: 10px 0; }
+.md hr { border: none; border-top: 1px dashed var(--border); margin: 16px 0; }
+
+/* ============ 原型预览 ============ */
+.proto-wrap { display: flex; flex-direction: column; height: 100%; gap: 8px; }
+.proto-wrap .toolbar { margin-bottom: 0; }
+#protoFrame, #protoSrc { flex: 1; min-height: 420px; width: 100%; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
+#protoSrc { background: var(--code-bg); color: var(--code-text); font-family: var(--mono); font-size: 12px; line-height: 1.6; white-space: pre-wrap; padding: 12px; overflow: auto; }
+.empty { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
+.toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.tag { font-size: 11.5px; padding: 2px 9px; border-radius: 10px; background: var(--hover); color: var(--muted); }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.no { background: var(--err-soft); color: var(--err); }
+
+/* ============ 卡片与表单 ============ */
+.gate-card { max-width: 640px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+.gate-card pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px; white-space: pre-wrap; }
+.gate-form { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.gate-form label { font-size: 13px; color: var(--muted); }
+.gate-form textarea { border: 1px solid var(--border); border-radius: 8px; padding: 9px; min-height: 70px; background: var(--panel); color: var(--text); }
+.radios { display: flex; gap: 18px; flex-wrap: wrap; }
+.radios label { display: flex; gap: 5px; align-items: center; color: var(--text); cursor: pointer; }
+.radios input { accent-color: var(--primary); }
+.editor { max-width: 100%; margin-bottom: 18px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.editor h3 { font-size: 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.editor textarea { width: 100%; min-height: 180px; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; background: var(--panel); color: var(--text); }
+.editor .hint { font-size: 12px; color: var(--muted); margin: 4px 0 8px; }
+.saved { color: var(--ok); font-size: 12px; margin-left: 8px; }
+
+/* ============ 弹窗与提示 ============ */
+#modalMask { position: fixed; inset: 0; background: rgba(15,23,42,.5); backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center; z-index: 50; }
+#modalMask.show { display: flex; animation: fadeIn .18s; }
+@keyframes fadeIn { from { opacity: 0; } }
+#modal { background: var(--panel); border-radius: 14px; padding: 22px; width: 580px; max-width: 92vw; box-shadow: 0 20px 50px rgba(15,23,42,.3); animation: slideUp .2s; }
+@keyframes slideUp { from { transform: translateY(14px); opacity: 0; } }
+#modal h2 { font-size: 15px; margin-bottom: 10px; }
+#modal textarea { width: 100%; min-height: 180px; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font: inherit; background: var(--panel); color: var(--text); }
+#modal .hint { font-size: 12px; color: var(--muted); margin: 6px 0 12px; }
+#modal .actions { display: flex; gap: 8px; justify-content: flex-end; }
+.toast {
+  position: fixed; top: 16px; right: 16px; background: var(--text); color: var(--bg);
+  padding: 11px 18px; border-radius: 10px; font-size: 13px; z-index: 99;
+  display: none; box-shadow: 0 8px 24px rgba(15,23,42,.25); animation: toastIn .22s;
+}
+@keyframes toastIn { from { transform: translateY(-8px); opacity: 0; } }
+
+/* ============ 输入预览(需求补充) ============ */
+#inputPanel summary { cursor: pointer; user-select: none; font-size: 14px; font-weight: 700; padding: 2px 0 8px; display: flex; align-items: center; gap: 8px; }
+#inputPanel summary::-webkit-details-marker { display: none; }
+#inputPanel summary::before { content: "▾"; transition: transform .2s; color: var(--muted); }
+#inputPanel details:not([open]) summary::before { transform: rotate(-90deg); }
+#inputPanel textarea { min-height: 64px; width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 9px; font-family: inherit; font-size: 12.5px; line-height: 1.6; background: var(--bg); color: var(--text); }
+#inputPanel select { border: 1px solid var(--border); border-radius: 8px; padding: 7px; font-size: 12.5px; background: var(--panel); color: var(--text); }
+.preview { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; max-height: 230px; overflow: auto; white-space: pre-wrap; background: var(--bg); margin-top: 5px; line-height: 1.7; }
+.preview-block { margin-top: 8px; }
+.preview-block > b { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.supp-row { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; flex-wrap: wrap; }
+.supp-row select { flex: none; width: 220px; }
+.supp-row textarea { flex: 1; min-width: 260px; }
+.supp-row button { flex: none; }
+
+/* ============ 响应式 ============ */
+@media (max-width: 960px) {
+  aside { width: 220px; min-width: 220px; }
+  .filelist { width: 180px; min-width: 180px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🤖 <span class="brand">PMAgents</span> <span class="h1-sub">操作面板</span></h1>
+  <select id="reqSelect" title="选择需求"></select>
+  <button id="btnNewReq">＋ 新建需求</button>
+  <span style="flex:1"></span>
+  <button id="btnRunNext" class="primary" title="只跑下一个未完成的步骤,完成后可查看产物再决定">▶ 跑下一步</button>
+  <button id="btnRunAll" title="从第一个未完成的步骤一直跑到最后">⏩ 跑完全部</button>
+  <button id="btnStop" class="danger" disabled>■ 停止</button>
+  <button id="btnTheme" title="切换深/浅色主题">🌓</button>
+  <div id="runBar"></div>
+</header>
+<main>
+  <aside id="steps"></aside>
+  <section>
+    <div id="tabs">
+      <button data-tab="artifacts" class="active">产物查看</button>
+      <button data-tab="gate">评审 Gate</button>
+      <button data-tab="processlog">过程数据</button>
+    </div>
+    <div id="viewer"></div>
+  </section>
+</main>
+
+<div id="modalMask">
+  <div id="modal">
+    <h2>新建需求</h2>
+    <textarea id="newReqText" placeholder="粘贴原始需求/用户反馈内容,一条或多条均可..."></textarea>
+    <div class="hint">留空则使用 src/input.txt 的内容。提交后会自动生成新的需求编号(REQ-YYYYMMDD-NNN)。</div>
+    <div class="actions">
+      <button id="btnModalCancel">取消</button>
+      <button id="btnModalOk" class="primary">创建并选择</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = (sel) => document.querySelector(sel);
+let currentReq = null;
+let status = null;
+let files = [];
+let currentTab = "artifacts";
+let currentFile = null;
+let activeStep = null;
+let prevLastFinished = null;
+
+// ==================== API ====================
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `请求失败 (${res.status})`);
+  return data;
+}
+const getJson = (p) => api(p);
+const postJson = (p, body) => api(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+
+// ==================== 提示 ====================
+let toastTimer = null;
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg; el.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.style.display = "none", 3200);
+}
+
+// ==================== Markdown 渲染(轻量) ====================
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function inline(s) {
+  return escapeHtml(s)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/\*(?![*\s])([^*]+)\*/g, "<i>$1</i>");
+}
+function renderMd(src) {
+  if (!src) return '<div class="empty">(空文件)</div>';
+  const blocks = [];
+  let s = src.replace(/```([a-zA-Z]*)\r?\n([\s\S]*?)```/g, (m, lang, code) => {
+    blocks.push({ lang: lang || "", code });
+    return " BLOCK" + (blocks.length - 1) + " ";
+  });
+  const lines = s.split(/\r?\n/);
+  const out = [];
+  let i = 0, para = [];
+  const flushPara = () => { if (para.length) { out.push("<p>" + para.map(inline).join("<br>") + "</p>"); para = []; } };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^ BLOCK\d+ $/.test(line.trim())) { flushPara(); out.push(line.trim()); i++; continue; }
+    if (/^\s*$/.test(line)) { flushPara(); i++; continue; }
+    const h = line.match(/^(#{1,4})\s+(.*)/);
+    if (h) { flushPara(); out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`); i++; continue; }
+    if (/^---+$/.test(line.trim())) { flushPara(); out.push("<hr>"); i++; continue; }
+    if (/^&gt;\s?/.test(line) || /^>\s?/.test(line)) {
+      flushPara();
+      const q = [];
+      while (i < lines.length && /^&gt;\s?/.test(lines[i]) || /^>\s?/.test(lines[i])) {
+        q.push(lines[i].replace(/^&gt;\s?/, "").replace(/^>\s?/, "")); i++;
+      }
+      out.push("<blockquote>" + q.map(inline).join("<br>") + "</blockquote>");
+      continue;
+    }
+    // 表格
+    if (/^\|.*\|$/.test(line.trim()) && i + 1 < lines.length && /^\|[\s\-:|]+\|$/.test(lines[i + 1].trim())) {
+      flushPara();
+      const head = line.trim().split("|").slice(1, -1).map(c => inline(c.trim()));
+      i += 2;
+      const rows = [];
+      while (i < lines.length && /^\|.*\|$/.test(lines[i].trim())) {
+        rows.push(lines[i].trim().split("|").slice(1, -1).map(c => inline(c.trim()))); i++;
+      }
+      let html = "<table><thead><tr>" + head.map(c => `<th>${c}</th>`).join("") + "</tr></thead><tbody>";
+      rows.forEach(r => { html += "<tr>" + r.map(c => `<td>${c}</td>`).join("") + "</tr>"; });
+      out.push(html + "</tbody></table>");
+      continue;
+    }
+    // 列表
+    if (/^\s*[-*+]\s+/.test(line) || /^\s*\d+[.)]\s+/.test(line)) {
+      flushPara();
+      const ordered = /^\s*\d+[.)]\s+/.test(line);
+      const items = [];
+      while (i < lines.length) {
+        const l = lines[i];
+        const isUl = /^\s*[-*+]\s+/.test(l), isOl = /^\s*\d+[.)]\s+/.test(l);
+        if (!isUl && !isOl) break;
+        items.push(l.replace(/^\s*[-*+]\s+/, "").replace(/^\s*\d+[.)]\s+/, "")); i++;
+      }
+      const tag = ordered ? "ol" : "ul";
+      out.push(`<${tag}>` + items.map(it => `<li>${inline(it)}</li>`).join("") + `</${tag}>`);
+      continue;
+    }
+    para.push(line); i++;
+  }
+  flushPara();
+  let html = out.join("\n");
+  html = html.replace(/ BLOCK(\d+) /g, (m, idx) => {
+    const b = blocks[Number(idx)];
+    const lang = b.lang && b.lang !== "text" ? `<span class="langtag">${escapeHtml(b.lang)}</span>` : "";
+    return `<pre>${lang}${escapeHtml(b.code)}</pre>`;
+  });
+  return `<div class="md">${html}</div>`;
+}
+
+// ==================== 步骤列表 ====================
+function renderSteps() {
+  const aside = $("#steps");
+  if (!status) { aside.innerHTML = '<div class="empty" style="padding:16px">暂无数据</div>'; return; }
+  const doneCount = status.steps.filter(s => s.done).length;
+  const total = status.steps.length;
+  const pct = total ? Math.round(doneCount / total * 100) : 0;
+  aside.innerHTML = `<div class="step-progress"><div class="bar"><i style="width:${pct}%"></i></div><b>${doneCount}/${total}</b></div>`;
+  status.steps.forEach((st, i) => {
+    const cls = st.done ? "done" : (st.name === status.current_step && status.running ? "running" : (st.last_error ? "error" : (st.warnings && st.warnings.length ? "warn" : "")));
+    const dotTxt = st.done ? "✓" : (st.last_error ? "✕" : (cls === "running" ? "" : i + 1));
+    const div = document.createElement("div");
+    div.className = "step " + cls + (activeStep === st.name ? " active" : "");
+    const gateBadge = st.gate ? (st.gate_ok ? '<span class="badge gate-ok">gate ✓</span>' : '<span class="badge gate-no">gate ✕</span>') : "";
+    const warnList = (st.warnings || []).slice(0, 2).map(w => `<div class="warnlist">⚠ ${w}</div>`).join("");
+    div.innerHTML = `<span class="dot">${dotTxt}</span>
+      <div class="info">
+        <div class="name">${st.label}</div>
+        <div class="label">${st.name}${st.running ? "" : ""}</div>
+        ${gateBadge}${warnList}
+        ${st.last_error ? `<div class="warnlist" style="color:var(--err)">✕ ${st.last_error}</div>` : ""}
+      </div>
+      <button class="rerun" title="强制重跑此步骤" data-step="${st.name}">↻</button>`;
+    div.onclick = (e) => {
+      if (e.target.closest(".rerun")) return;
+      selectStep(st.name);
+    };
+    div.querySelector(".rerun").onclick = (e) => {
+      e.stopPropagation();
+      if (status.running) { toast("有任务运行中,请先停止"); return; }
+      runMode("step", st.name, true);
+    };
+    aside.appendChild(div);
+  });
+}
+
+function selectStep(name) {
+  activeStep = name;
+  renderSteps();
+  const sel = $("#suppStep");
+  if (sel) { sel.value = name; updateSuppStepLabel(); }
+  const st = status.steps.find(s => s.name === name);
+  const filesInStep = st ? collectStepFiles(st) : [];
+  if (st && st.artifact) showFile(st.artifact);
+  else if (filesInStep.length) showFile(filesInStep[0].path);
+  else $("#contentArea").innerHTML = '<div class="empty">该步骤还没有产物</div>';
+}
+
+function collectStepFiles(st) {
+  // 把产物文件按步骤分组显示(基于文件前缀序号)
+  return files.filter(f => f.path.startsWith("artifacts/"));
+}
+
+function showFile(path) {
+  currentFile = path;
+  renderFileList();
+  const area = $("#contentArea");
+  area.innerHTML = '<div class="empty">加载中...</div>';
+  getJson(`/api/req/${currentReq}/artifact?path=${encodeURIComponent(path)}`)
+    .then(d => {
+      if (path.endsWith(".html")) {
+        area.innerHTML = `<div class="proto-wrap">
+          <div class="toolbar">
+            <a href="/api/req/${currentReq}/raw/${encodeURIComponent(path)}" target="_blank"><button class="primary">🌐 新窗口打开</button></a>
+            <button id="btnProtoSrc">🔍 查看源码</button>
+            <span class="tag">HTML 原型 · 实时预览</span>
+            <span style="margin-left:auto;color:var(--muted);font-size:12px">可在面板内直接交互演示</span>
+          </div>
+          <iframe id="protoFrame" title="原型预览"></iframe>
+          <div id="protoSrc" style="display:none">${escapeHtml(d.content)}</div>
+        </div>`;
+        $("#protoFrame").srcdoc = d.content;
+        $("#btnProtoSrc").onclick = () => {
+          const f = $("#protoFrame"), s = $("#protoSrc"), b = $("#btnProtoSrc");
+          if (s.style.display === "none") { s.style.display = "block"; f.style.display = "none"; b.textContent = "👁 返回预览"; }
+          else { s.style.display = "none"; f.style.display = "block"; b.textContent = "🔍 查看源码"; }
+        };
+      } else {
+        area.innerHTML = renderMd(d.content);
+      }
+    })
+    .catch(e => { area.innerHTML = `<div class="empty">加载失败: ${e.message}</div>`; });
+}
+
+function renderFileList() {
+  const el = $("#fileList");
+  const groups = {};
+  files.forEach(f => {
+    const parts = f.path.split("/");
+    const dir = parts.length > 1 ? parts[0] : "root";
+    (groups[dir] = groups[dir] || []).push(f);
+  });
+  el.innerHTML = "";
+  ["input", "artifacts", "gates", "process_log", "reports"].forEach(dir => {
+    if (!groups[dir]) return;
+    const title = document.createElement("div");
+    title.className = "dir"; title.textContent = dir + "/";
+    el.appendChild(title);
+    groups[dir].forEach(f => {
+      const a = document.createElement("a");
+      a.className = "f" + (currentFile === f.path ? " active" : "");
+      a.textContent = f.path.split("/").pop() + (f.path.endsWith(".html") ? " 🌐" : "");
+      a.title = f.path + " (" + f.size + " 字节)";
+      a.onclick = () => showFile(f.path);
+      el.appendChild(a);
+    });
+  });
+}
+
+// ==================== 运行控制 ====================
+async function runMode(mode, step, force) {
+  try {
+    await postJson(`/api/req/${currentReq}/run`, { mode, step, force: !!force });
+    pollSoon();
+  } catch (e) { toast(e.message); }
+}
+async function stopRun() {
+  try { await postJson(`/api/req/${currentReq}/stop`); } catch (e) { toast(e.message); }
+}
+
+// ==================== 状态轮询 ====================
+async function refreshStatus(selectFinished) {
+  if (!currentReq) return;
+  try {
+    status = await getJson(`/api/req/${currentReq}/status`);
+    if (selectFinished && status.last_finished && status.last_finished !== prevLastFinished) {
+      prevLastFinished = status.last_finished;
+      selectStep(status.last_finished);
+    }
+    renderSteps();
+    renderRunBar();
+    if (document.querySelectorAll(".filelist").length) renderFileList();
+  } catch (e) { /* 需求可能刚被创建 */ }
+}
+function renderRunBar() {
+  const bar = $("#runBar");
+  const stopBtn = $("#btnStop"), nextBtn = $("#btnRunNext"), allBtn = $("#btnRunAll");
+  stopBtn.disabled = !status.running;
+  nextBtn.disabled = status.running;
+  allBtn.disabled = status.running;
+  bar.className = "";
+  if (status.running) {
+    const label = status.steps.find(s => s.name === status.current_step);
+    bar.className = "running";
+    bar.textContent = `⏳ 正在执行: ${label ? label.label : status.current_step}...${status.stop_requested ? " (当前步骤结束后停止)" : ""}`;
+  } else if (status.last_error) {
+    bar.className = "error";
+    bar.textContent = `✕ ${status.last_error}`;
+  } else if (status.next_pending) {
+    const label = status.steps.find(s => s.name === status.next_pending);
+    bar.textContent = `待跑: ${label ? label.label : status.next_pending}。可「跑下一步」查看产物后再决定,或「跑完全部」。`;
+  } else {
+    bar.textContent = "✅ 全部步骤已完成";
+  }
+}
+let pollTimer = null;
+function pollSoon() { clearTimeout(pollTimer); pollTimer = setTimeout(() => refreshStatus(true), 1500); }
+
+// ==================== Gate ====================
+async function renderGate() {
+  const area = $("#contentArea");
+  try {
+    const g = await getJson(`/api/req/${currentReq}/gate`);
+    const passed = g.passed;
+    area.innerHTML = `<div class="gate-card">
+      <div class="toolbar"><h2 style="font-size:15px">需求评审 Gate</h2>
+        <span class="tag ${passed ? "ok" : "no"}">${passed ? "已通过(排期可执行)" : "未通过(排期被拦截)"}</span></div>
+      <pre>${escapeHtml(g.decision_text || "(文件不存在)")}</pre>
+      <div class="gate-form">
+        <label>设置评审结论:</label>
+        <div class="radios">
+          <label><input type="radio" name="gateDecision" value="passed" ${passed ? "checked" : ""}> 通过</label>
+          <label><input type="radio" name="gateDecision" value="conditional"> 有条件通过</label>
+          <label><input type="radio" name="gateDecision" value="rejected"> 打回</label>
+        </div>
+        <textarea id="gateNote" placeholder="评审意见..."></textarea>
+        <div><button class="primary" onclick="saveGate()">保存评审结论</button></div>
+      </div></div>`;
+  } catch (e) { area.innerHTML = `<div class="empty">加载失败: ${e.message}</div>`; }
+}
+async function saveGate() {
+  const decision = document.querySelector('input[name="gateDecision"]:checked').value;
+  try {
+    await postJson(`/api/req/${currentReq}/gate`, { decision, note: $("#gateNote").value });
+    toast("评审结论已保存");
+    refreshStatus(false);
+    renderGate();
+  } catch (e) { toast(e.message); }
+}
+
+// ==================== 过程数据 ====================
+const PL_FILES = [
+  { name: "dev_status.md", title: "研发过程记录", hint: "任务ID 见排期表,逐任务填写实际起止/人天/状态/延期原因" },
+  { name: "acceptance_result.md", title: "验收记录", hint: "按排期表验收清单逐任务填写通过/不通过与问题" },
+  { name: "post_launch_data.md", title: "上线后数据", hint: "填写预期指标的实际值,用于复盘对比" },
+  { name: "feedback.md", title: "用户反馈", hint: "粘贴用户反馈原文,复盘时由 Agent 做情感分析" },
+];
+async function renderProcessLog() {
+  const area = $("#contentArea");
+  area.innerHTML = '<div class="empty">加载中...</div>';
+  let html = "";
+  for (const f of PL_FILES) {
+    const d = await getJson(`/api/req/${currentReq}/processlog/${f.name}`).catch(() => ({ content: "" }));
+    html += `<div class="editor">
+      <h3>📝 ${f.title} <span class="tag">process_log/${f.name}</span></h3>
+      <div class="hint">${f.hint}</div>
+      <textarea id="pl-${f.name}">${escapeHtml(d.content || "")}</textarea>
+      <div style="margin-top:6px"><button class="primary" onclick="saveProcessLog('${f.name}')">保存</button></div>
+    </div>`;
+  }
+  area.innerHTML = html;
+}
+async function saveProcessLog(name) {
+  const content = document.getElementById(`pl-${name}`).value;
+  try {
+    await postJson(`/api/req/${currentReq}/processlog/${name}`, { content });
+    toast(`${name} 已保存,可重跑复盘步骤`);
+  } catch (e) { toast(e.message); }
+}
+
+// ==================== 需求补充(主面板输入预览内) ====================
+const SUPP_FIELD_LABELS = { user_role: "用户角色", scenario: "使用场景", pain_point: "痛点描述",
+  expectation: "期望诉求", frequency: "诉求频次", urgency: "紧急程度", summary: "摘要",
+  completeness: "完整性校验" };
+async function renderInputPanel() {
+  const box = $("#inputPanel");
+  if (!box) return;
+  const inp = await getJson(`/api/req/${currentReq}/input`).catch(() => ({ raw: "", supplement: "", entries: 0 }));
+  const steps = status.steps;
+  const nextPending = steps.find(s => !s.done);
+  const target = activeStep || (nextPending && nextPending.name) || (steps[steps.length - 1] && steps[steps.length - 1].name) || "";
+  const stale = status && status.supplement && status.supplement.stale;
+  const prevOpen = $("#suppPreview") ? $("#suppPreview").open : true;
+  box.innerHTML = `<details id="suppPreview" ${prevOpen ? "open" : ""}>
+    <summary>📋 当前需求输入(执行前预览) <span class="tag">原始需求 + 补充 ${inp.entries} 条</span></summary>
+    <div class="hint">执行前预览:下方合并后的需求会作为每一步执行时的输入;追加补充后按所选步骤在原需求基础上重新分析。</div>
+    <div class="preview-block">
+      <b>原始需求</b>
+      <div class="preview">${escapeHtml(inp.raw || "(空)")}</div>
+    </div>
+    <div class="preview-block">
+      <b>补充信息(多次追加,叠加不覆盖)</b>
+      <div class="preview">${escapeHtml(inp.supplement || "(暂无补充记录)")}</div>
+    </div>
+    ${stale ? '<div class="hint" style="color:var(--warn)">⚠ 有补充晚于 analyze 完成时间,请重跑受影响的步骤以吸收补充。</div>' : ""}
+    <div class="hint" style="margin-top:8px">✍️ 追加补充:下方输入区始终可见,选择当前所属步骤,保存后自动在该步骤 force 重跑分析;多次添加多次叠加。</div>
+    <div id="suppSuggest"></div>
+  </details>
+  <div class="supp-row">
+    <select id="suppStep" onchange="updateSuppStepLabel()" title="选择当前所属步骤">${steps.map(s => `<option value="${s.name}" ${s.name === target ? "selected" : ""}>${s.label} (${s.name})${s.done ? " · 已跑" : ""}</option>`).join("")}</select>
+    <textarea id="suppText" placeholder="追加补充内容(用户角色/场景/痛点/诉求/频次/紧急度等)…"></textarea>
+    <button class="primary" id="btnSuppSave" onclick="saveSupplement()">追加并重跑所选步骤</button>
+  </div>`;
+  updateSuppStepLabel();
+  renderSuppSuggestions();
+}
+function updateSuppStepLabel() {
+  const sel = $("#suppStep"), btn = $("#btnSuppSave");
+  if (!sel || !btn) return;
+  const st = status.steps.find(s => s.name === sel.value);
+  btn.textContent = `追加并重跑: ${st ? st.label : sel.value}`;
+}
+async function renderSuppSuggestions() {
+  const box = $("#suppSuggest");
+  if (!box) return;
+  try {
+    const d = await getJson(`/api/req/${currentReq}/artifact?path=${encodeURIComponent("artifacts/02_requirement_card.json")}`);
+    const card = JSON.parse(d.content);
+    const missing = Array.isArray(card.missing_fields) ? card.missing_fields : [];
+    if (card.completeness === "待补充" && missing.length) {
+      box.innerHTML = `<div class="hint" style="margin-top:10px">💡 analyze 步骤生成的待补充清单,可优先补充:</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px">` +
+        missing.map(f => `<span class="tag">${SUPP_FIELD_LABELS[f] || f}</span>`).join("") + `</div>`;
+    }
+  } catch (e) { /* 卡片 JSON 不存在或解析失败,不展示建议 */ }
+}
+async function saveSupplement() {
+  const text = $("#suppText").value;
+  if (!text.trim()) { toast("补充内容不能为空"); return; }
+  const step = $("#suppStep") ? $("#suppStep").value : "";
+  try {
+    const r = await postJson(`/api/req/${currentReq}/supplement`, { content: text, step });
+    const label = status.steps.find(s => s.name === r.auto_run_step);
+    if (r.auto_run) toast(`已追加第 ${r.entries} 条补充,已自动重跑: ${label ? label.label : r.auto_run_step}`);
+    else if (r.auto_run_error) toast(`已追加第 ${r.entries} 条补充;自动重跑未启动: ${r.auto_run_error}`);
+    else toast(`已追加第 ${r.entries} 条补充`);
+    await refreshStatus(false);
+    renderInputPanel();
+  } catch (e) { toast(e.message); }
+}
+
+// ==================== 需求选择 ====================
+async function loadRequirements(selectId) {
+  const list = await getJson("/api/requirements");
+  const sel = $("#reqSelect");
+  sel.innerHTML = "";
+  list.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = `${r.id} (${r.steps_done}/${r.steps_total})`;
+    sel.appendChild(opt);
+  });
+  if (!list.length) {
+    const opt = document.createElement("option");
+    opt.textContent = "(还没有需求,点「新建需求」)";
+    sel.appendChild(opt);
+  }
+  const target = selectId || (currentReq && list.find(r => r.id === currentReq) ? currentReq : (list[0] && list[0].id));
+  if (target) { sel.value = target; currentReq = target; }
+}
+async function selectRequirement(id) {
+  currentReq = id;
+  prevLastFinished = null;
+  activeStep = null; currentFile = null;
+  await refreshStatus(false);
+  files = await getJson(`/api/req/${currentReq}/files`).catch(() => []);
+  renderTab();
+  const st = status.steps.find(s => !s.done) || status.steps[status.steps.length - 1];
+  if (st && st.artifact) selectStep(st.name);
+  else { selectStep(st ? st.name : status.steps[0].name); }
+}
+
+// ==================== Tab ====================
+function renderTab() {
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === currentTab));
+  const viewer = $("#viewer");
+  if (currentTab === "artifacts") {
+    viewer.innerHTML = `<div class="editor" id="inputPanel" style="margin-bottom:10px"></div>
+      <div class="panel-row">
+        <div class="filelist" id="fileList"></div>
+        <div class="content" id="contentArea"></div></div>`;
+    renderFileList();
+    renderInputPanel();
+    if (currentFile) showFile(currentFile);
+    else $("#contentArea").innerHTML = '<div class="empty">点击左侧步骤或文件查看产物</div>';
+  } else if (currentTab === "gate") {
+    viewer.innerHTML = `<div class="content" id="contentArea" style="padding:0"></div>`;
+    renderGate();
+  } else if (currentTab === "processlog") {
+    viewer.innerHTML = `<div class="content" id="contentArea" style="padding:0"></div>`;
+    renderProcessLog();
+  } else {
+    viewer.innerHTML = `<div class="content" id="contentArea" style="padding:0"></div>`;
+    renderGate();
+  }
+}
+
+// ==================== 事件绑定 ====================
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { currentTab = b.dataset.tab; renderTab(); });
+$("#btnRunNext").onclick = () => runMode("next");
+$("#btnRunAll").onclick = () => runMode("full");
+$("#btnStop").onclick = stopRun;
+
+// ==================== 主题(深/浅色) ====================
+const THEME_KEY = "pma-theme";
+(function initTheme() {
+  if (localStorage.getItem(THEME_KEY) === "dark") {
+    document.documentElement.dataset.theme = "dark";
+    $("#btnTheme").textContent = "☀️";
+  }
+})();
+$("#btnTheme").onclick = () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem(THEME_KEY, next);
+  $("#btnTheme").textContent = next === "dark" ? "☀️" : "🌓";
+};
+$("#reqSelect").onchange = (e) => selectRequirement(e.target.value);
+$("#btnNewReq").onclick = () => { $("#newReqText").value = ""; $("#modalMask").classList.add("show"); };
+$("#btnModalCancel").onclick = () => $("#modalMask").classList.remove("show");
+$("#btnModalOk").onclick = async () => {
+  try {
+    const d = await postJson("/api/requirements/init", { input: $("#newReqText").value });
+    $("#modalMask").classList.remove("show");
+    await loadRequirements(d.id);
+    await selectRequirement(d.id);
+    toast(`已创建需求 ${d.id}`);
+  } catch (e) { toast(e.message); }
+};
+$("#modalMask").onclick = (e) => { if (e.target === $("#modalMask")) $("#modalMask").classList.remove("show"); };
+
+// ==================== 启动 ====================
+(async function boot() {
+  await loadRequirements();
+  if (currentReq) await selectRequirement(currentReq);
+  setInterval(() => refreshStatus(true), 2500);
+})();
+</script>
+</body>
+</html>

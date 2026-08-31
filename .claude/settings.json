@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST -H \"Content-Type: application/json\" -d '{\"content\":\"再补充:诉求频次为每周一次,期望一键导出报表\"}' http://127.0.0.1:8391/api/req/REQ-TEST/supplement)",
+      "Bash(../.venv/Scripts/python.exe -c ' *)",
+      "Bash(../.venv/Scripts/python.exe main.py supplement --requirement REQ-TEST --text \"测试提示链\")",
+      "Bash(../.venv/Scripts/python.exe main.py supplement --requirement REQ-TEST --text \"   \")",
+      "Bash(echo \"\\(exit=$?\\)\")",
+      "Bash(../.venv/Scripts/python.exe main.py --help)",
+      "Bash(../.venv/Scripts/python.exe -c \"import webapp; print\\('webapp import ok'\\)\")",
+      "Bash(curl -s -m 5 http://127.0.0.1:8321/api/requirements)",
+      "Bash(PYTHONIOENCODING=utf-8 ../.venv/Scripts/python.exe -c ' *)",
+      "Bash(cd \"C:/Users/hanyi/Desktop/产品经理—项目分析/test1\" && echo \"=== REQ-20260830-006 内容 ===\" && find REQ-20260830-006 -type f && echo && echo \"=== state.json ===\" && cat REQ-20260830-006/state.json 2>/dev/null && echo && echo \"=== raw_requirement.txt ===\" && cat REQ-20260830-006/input/raw_requirement.txt 2>/dev/null | head -5)",
+      "Read(//c/Users/hanyi/Desktop/产品经理—项目分析/test1/**)",
+      "Bash(netstat -ano)",
+      "Bash(powershell -NoProfile -Command \"Get-Process -Id \\(Get-NetTCPConnection -LocalPort 8321 -State Listen\\).OwningProcess | Select-Object Id,ProcessName,StartTime | Format-List\")",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 PMA_OUTPUT_DIR=C:/Users/hanyi/Desktop/产品经理—项目分析/fix_test2 ../.venv/Scripts/python.exe -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 PMA_OUTPUT_DIR=\"C:/Users/hanyi/Desktop/产品经理—项目分析/fix_test2\" ../.venv/Scripts/python.exe main.py init --input _tmp_req.txt)",
+      "Bash(PYTHONIOENCODING=utf-8 PMA_OUTPUT_DIR=\"C:/Users/hanyi/Desktop/产品经理—项目分析/fix_test2\" ../.venv/Scripts/python.exe main.py step collect --requirement REQ-20260830-001)",
+      "Bash(PYTHONIOENCODING=utf-8 PMA_OUTPUT_DIR=\"C:/Users/hanyi/Desktop/产品经理—项目分析/fix_test2\" ../.venv/Scripts/python.exe main.py web --port 8322 --no-browser)",
+      "Bash(powershell -NoProfile -Command \"Get-Process -Id 2844 | Select-Object Id,StartTime | Format-List\")"
+    ]
+  }
+}
