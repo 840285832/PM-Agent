@@ -81,7 +81,6 @@ python main.py web [--port 8321] [--no-browser]       # 可视化操作面板(�
 每个需求一个目录,默认输出到**项目外的桌面目录**(项目内不堆积产物):
 
 ```
-C:\Users\hanyi\Desktop\产品经理—项目分析\test1\REQ-YYYYMMDD-NNN\
   input/raw_requirement.txt            # 原始输入拷贝
   input/supplement.md                  # 需求补充信息(多轮追加,带时间戳;orchestrator/collect/analyze 的输入)
   artifacts/                           # 步骤产物(序号=执行顺序)
@@ -124,7 +123,3 @@ Agent 直接产出**单文件 HTML 低保真原型**(零依赖、可交互、可
 - 评审为人工 gate,系统不代替拍板;研发状态、验收、上线数据需人工录入 process_log/
 - DeepSeek 的 JSON/HTML 输出不稳定时,系统容错降级并提示人工修正,不静默丢弃
 - 路线图:需求池跨需求复用 → 国产工具程序化导入(视 API 验证)→ 团队协作扩展
-
-## 安全提示
-
-`src/.env` 含明文 API 密钥。若建 git 仓库,请立即将 `.env` 加入 `.gitignore`,不要提交密钥。
